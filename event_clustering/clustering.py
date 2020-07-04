@@ -9,6 +9,13 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 # from https://www.kaggle.com/jbencina/clustering-documents-with-tfidf-and-kmeans
+
+##  interpret clusters
+# find_optimal_clusters(text, 20)
+# clusters = MiniBatchKMeans(n_clusters=6, init_size=1024, batch_size=2048, random_state=20).fit_predict(text)
+# plot_tsne_pca(text, clusters)
+# get_top_keywords(text, clusters, tfidf.get_feature_names(), 6)
+
 def find_optimal_clusters(data, max_k):
     iters = range(2, max_k+1, 2)
     

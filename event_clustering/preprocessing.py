@@ -51,12 +51,12 @@ def add_timestamp_features(df):
     df['feature_weekday'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.weekday())
     df['feature_hour'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.hour)
 
-def add_previous_and_next_event_reference(df, reference_column=CONCEPT_NAME_COLUMN):
+def add_previous_and_next_event_reference(df, reference_column=CONCEPT_NAME_COLUMN, start_filler='start', end_filler='end'):
     if not CASE_ID_COLUMN_NAME in df:
         return
     for case in df[CASE_ID_COLUMN_NAME].unique():
-        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_previous_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(+1).fillna('start')
-        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_next_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(-1).fillna('end')
+        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_previous_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(+1).fillna(start_filler)
+        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_next_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(-1).fillna(end_filler)
     return df
 
 ### feature encoding
