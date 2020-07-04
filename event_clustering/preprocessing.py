@@ -29,6 +29,14 @@ def drop_columns(df):
         column_names.remove(name)
     return df.drop(column_names, axis=1, inplace=False)
 
+### analyze df
+def analyze(df):
+    for name in df.columns:
+        print("column name: " + name)
+        print("data type: " + str(type(df[name][0])))
+        print("unqiue values: " + str(len(df[name].unique())))
+        print(df[name][:10].values)
+        print('\n')
 def one_hot_encode(df, column, none_replacement):
     enc = OneHotEncoder(handle_unknown='ignore')
     df[column].fillna(none_replacement, inplace=True)
