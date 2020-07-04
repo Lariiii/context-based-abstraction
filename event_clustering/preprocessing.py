@@ -7,6 +7,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.csv import factory as csv_exporter
 from pm4py.objects.log.importer.csv import factory as csv_importer
 
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import OneHotEncoder
 
 TIMESTAMP_COLUMN_NAME = 'time:timestamp'
@@ -51,16 +52,22 @@ def add_timestamp_features(df):
     df['feature_weekday'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.weekday())
     df['feature_hour'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.hour)
 
-def add_previous_and_next_event_reference(df, reference_column=CONCEPT_NAME_COLUMN, start_filler='start', end_filler='end'):
-    if not CASE_ID_COLUMN_NAME in df:
+def add_previous_and_next_event_reference(df, case_id_column=CASE_ID_COLUMN_NAME, reference_column=CONCEPT_NAME_COLUMN, start_filler='start', end_filler='end'):
+    if not case_id_column in df:
         return
-    for case in df[CASE_ID_COLUMN_NAME].unique():
-        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_previous_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(+1).fillna(start_filler)
-        df.loc[df[CASE_ID_COLUMN_NAME] == case, 'feature_next_' + reference_column] = df.loc[df[CASE_ID_COLUMN_NAME] == case][reference_column].shift(-1).fillna(end_filler)
+    for case in df[case_id_column].unique():
+        df.loc[df[case_id_column] == case, 'feature_previous_' + reference_column] = df.loc[df[case_id_column] == case][reference_column].shift(+1).fillna(start_filler)
+        df.loc[df[case_id_column] == case, 'feature_next_' + reference_column] = df.loc[df[case_id_column] == case][reference_column].shift(-1).fillna(end_filler)
     return df
 
 ### feature encoding
-def one_hot_encode(df, column, none_replacement):
+def one_hot_encode(df, column, none_replacement='none'):
     enc = OneHotEncoder(handle_unknown='ignore')
     df[column].fillna(none_replacement, inplace=True)
     return pd.DataFrame(enc.fit_transform(df[[column]]).toarray(), columns = enc.get_feature_names([column]))
+
+def tfidf_encode(df, column, vectorizer):
+    vectorizer.fit_transform(df[column])
+    df_encoded = pd.DataFrame(vectorizer.transform(df[column]).todense())
+    df_encoded.columns = [column + '_' + x for x in vectorizer.get_feature_names()]
+    return df_encoded
