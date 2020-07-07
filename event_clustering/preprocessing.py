@@ -40,7 +40,7 @@ def analyze(df, show_examples=False):
     for name in df.columns:
         print("column name: " + name)
         print("data type: " + str(type(df[name][0])))
-        print("unqiue values: " + str(len(df[name].unique())))
+        print("unique values: " + str(len(df[name].unique())))
         if show_examples:
             print(df[name][:10].values)
         print('\n')
