@@ -7,18 +7,16 @@ def add_cluster_label(df, df_vectorized, cluster_alg):
     df["cluster_label"] = pd.Series(cluster_alg.predict(new_col), index=df.index)
     return df
 
-def replace_with_representative(df, col_name, col_label, original_df_columns):
+def replace_with_representative(df, col_name, cluster_col_name):
     representative_dict = dict()
-    cluster_nr = len(df[col_label].unique())
+    amount_of_clusters = len(df[cluster_col_name].unique())
     alphabet_len = len(ascii_uppercase)
-    repetitions = (float(cluster_nr) / float(alphabet_len)) + 1
+    repetitions = (float(amount_of_clusters) / float(alphabet_len)) + 1
     representatives = [''.join(i) for i in product(ascii_uppercase, repeat = int(repetitions))]
-    for label in range(cluster_nr):
+    for label in range(amount_of_clusters):
         representative_dict[label] = representatives[label]
         
-    df[col_name] = df[col_label].map(representative_dict)
-    # just keep original columns
-    df = df[original_df_columns]
+    df[col_name] = df[cluster_col_name].map(representative_dict)
     return df
 
 def write_to_csv(df, filename, index=False):
