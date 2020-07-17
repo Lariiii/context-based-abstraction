@@ -3,8 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans, AgglomerativeClustering
 from sklearn.decomposition import PCA
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 # from https://www.kaggle.com/jbencina/clustering-documents-with-tfidf-and-kmeans
 
@@ -28,9 +29,30 @@ def find_optimal_clusters(data, max_k):
     ax.set_ylabel('SSE')
     ax.set_title('SSE by Cluster Center Plot')
 
-def plot_pca(df, clusters):
-    pca = PCA(n_components=2).fit(df)
+def plot_pca(df, clusters, cluster_nr):
+    pca = PCA(n_components=cluster_nr).fit(df)
     coords = pca.transform(df)
     plt.figure()
     plt.scatter(coords[:, 0], coords[:, 1], c=clusters, cmap='prism')
     plt.show()
+    
+# https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html#sphx-glr-auto-examples-cluster-plot-agglomerative-dendrogram-py
+
+def plot_dendrogram(model, **kwargs):
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    linkage_matrix = np.column_stack([model.children_, model.distances_,
+                                      counts]).astype(float)
+
+    dendrogram(linkage_matrix, **kwargs)
+    
