@@ -30,10 +30,10 @@ def find_optimal_clusters(data, max_k):
     ax.set_title('SSE by Cluster Center Plot')
 
 def plot_pca(df, clusters, cluster_nr):
-    pca = PCA(n_components=cluster_nr).fit(df)
+    pca = PCA(n_components=2).fit(df)
     coords = pca.transform(df)
     plt.figure()
-    plt.scatter(coords[:, 0], coords[:, 1], c=clusters, cmap='prism')
+    plt.scatter(coords[:, 0], coords[:, 1], c=clusters, cmap='gnuplot')
     plt.show()
     
 # https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html#sphx-glr-auto-examples-cluster-plot-agglomerative-dendrogram-py
