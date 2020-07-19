@@ -11,7 +11,7 @@ from pm4py.objects.log.exporter.csv import factory as csv_exporter
 from pm4py.objects.log.importer.csv import factory as csv_importer
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
 
 TIMESTAMP_COLUMN_NAME = 'time:timestamp'
 CASE_ID_COLUMN_NAME = 'case:id'
@@ -126,6 +126,12 @@ def one_hot_encode(df, column, none_replacement='none'):
     enc = OneHotEncoder(handle_unknown='ignore')
     df[column].fillna(none_replacement, inplace=True)
     return pd.DataFrame(enc.fit_transform(df[[column]]).toarray(), columns = enc.get_feature_names([column]))
+
+def binning(df, column, n_bins, column_prefix=''):
+    enc = KBinsDiscretizer(n_bins=n_bins)
+    df_encoded = pd.DataFrame(enc.fit_transform(df[[column]]).toarray())
+    df_encoded.columns = [column_prefix + str(col) for col in df_encoded.columns]
+    return df_encoded
 
 def tfidf_encode(df, column, vectorizer):
     vectorizer.fit_transform(df[column])
