@@ -5,6 +5,7 @@ from itertools import product
 from string import ascii_uppercase
 
 import pandas as pd
+import numpy as np
 
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.csv import factory as csv_exporter
@@ -68,7 +69,7 @@ def add_event_type_representative(df, event_type_column=CONCEPT_NAME_COLUMN, rep
     df[representative_column] = df[event_type_column].map(representative_dict)
     return df
 
-def add_event_reference(df, nr_of_prev_events=0, nr_of_next_events=0, time_since_prev=False, time_till_next=False, case_id_column=CASE_ID_COLUMN_NAME, reference_column=CONCEPT_NAME_COLUMN_REPRESENTATIVE, timestamp_column=TIMESTAMP_COLUMN_NAME, start_filler='start', end_filler='end'):
+def add_event_reference(df, nr_of_prev_events=0, nr_of_next_events=0, include_reference=False, include_time=False, case_id_column=CASE_ID_COLUMN_NAME, reference_column=CONCEPT_NAME_COLUMN_REPRESENTATIVE, timestamp_column=TIMESTAMP_COLUMN_NAME, start_filler='start', end_filler='end'):
     col_ref_prev_prefix = 'feature_previous_-'
     col_time_prev_prefix = 'feature_time_since_-'
 
@@ -81,44 +82,47 @@ def add_event_reference(df, nr_of_prev_events=0, nr_of_next_events=0, time_since
             # add previous event reference
             if nr_of_prev_events > 0:
                 ref_replacement = case_rows[reference_column]
-                if time_since_prev:
-                    time_replacement = case_rows[timestamp_column]
-                    for x in range(1, nr_of_prev_events + 1):
-                        # add previous event references
+               
+                time_replacement = case_rows[timestamp_column]
+                for x in range(1, nr_of_prev_events + 1):
+                    # add previous event references
+                    if include_reference:
                         ref_replacement = ref_replacement.shift(+x)
                         if (x == 1): 
                             ref_replacement = ref_replacement.fillna(start_filler)
                         else:
                             ref_replacement = ref_replacement.fillna('')
                         df.loc[df[case_id_column] == case, col_ref_prev_prefix + str(x)] = ref_replacement
-                        # add time since previous event
+                    # add time since previous event
+                    if include_time:
                         time_filler = df[timestamp_column].max() + datetime.timedelta(days=1)
                         time_replacement = time_replacement.shift(+x)
                         time_replacement_df = pd.DataFrame(time_replacement)
                         time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler
-                        df.loc[df[case_id_column] == case, col_time_prev_prefix + str(x)] = case_rows[timestamp_column] -  time_replacement_df[timestamp_column]
+                        df.loc[df[case_id_column] == case, col_time_prev_prefix + str(x)] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
 
             if nr_of_next_events > 0:
                 ref_replacement = case_rows[reference_column]
-                if time_since_prev:
-                    time_replacement = case_rows[timestamp_column]
-                    for x in range(1, nr_of_next_events + 1):
-                        # add next event references
+                time_replacement = case_rows[timestamp_column]
+                for x in range(1, nr_of_next_events + 1):
+                    # add next event references
+                    if include_reference:
                         ref_replacement = ref_replacement.shift(-x)
                         if (x == 1): 
                             ref_replacement = ref_replacement.fillna(end_filler)
                         else:
                             ref_replacement = ref_replacement.fillna('')
                         df.loc[df[case_id_column] == case, col_ref_next_prefix + str(x)] = ref_replacement
-                        # add time until next event
+                    # add time until next event
+                    if include_time:
                         time_filler = df[timestamp_column].min() + datetime.timedelta(days=1)
                         time_replacement = time_replacement.shift(-x)
                         time_replacement_df = pd.DataFrame(time_replacement)
                         time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler
-                        df.loc[df[case_id_column] == case,  col_time_next_prefix + str(x)] = time_replacement_df[timestamp_column] - case_rows[timestamp_column]
+                        df.loc[df[case_id_column] == case,  col_time_next_prefix + str(x)] = (time_replacement_df[timestamp_column] - case_rows[timestamp_column]).map(lambda x: x.total_seconds())
     for name in df.columns:
         if 'feature_time' in name:
-            df.loc[df[name] < datetime.timedelta(), name] = datetime.timedelta()
+            df.loc[df[name] < 0, name] = None
     return df
 
 ### feature encoding
