@@ -50,6 +50,10 @@ def analyze(df, show_examples=False):
         if show_examples:
             print(df[name][:10].values)
         print('\n')
+    case_lengths = df.groupby(['case:id'])['case:id'].agg(['size'])
+    print("min case length: " + str(case_lengths.min()[0]))
+    print("max case length: " + str(case_lengths.max()[0]))
+    print("mean case length: " + str(case_lengths.mean()[0]))
 
 ### feature generation
 def add_timestamp_features(df):
