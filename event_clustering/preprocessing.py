@@ -93,7 +93,7 @@ def add_event_ref(df,
         sys.stdout.flush()
         counter += 1
         case_rows = df.loc[df[case_id_column] == case]
-        # add previous event reference
+        # add event reference
         df.loc[df[case_id_column] == case, ref_column] = case_rows[event_name_column].shift(+(-distance))
         time_replacement_df = pd.DataFrame(case_rows[timestamp_column].shift(+(-distance)))
         if distance > 0:
@@ -103,7 +103,16 @@ def add_event_ref(df,
         if distance < 0:
             time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler_max
             df.loc[df[case_id_column] == case, time_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
-    df.loc[df[time_column] < 0, time_column] = -1
+    df.loc[df[time_column] < 0, time_column] = -999999
+
+def determine_event_position(df):
+    df['feature_pos_beginning'] = 0
+    df['feature_pos_middle'] = 0
+    df['feature_pos_end'] = 0
+    df.loc[pd.isnull(df['event_ref_-1']), 'feature_pos_beginning'] = 1
+    df.loc[pd.isnull(df['event_ref_1']), 'feature_pos_end'] = 1
+    df.loc[(df['feature_pos_beginning'] == 0) & (df['feature_pos_end'] == 0), 'feature_pos_middle'] = 1
+
 
 ### feature encoding
 def one_hot_encode(df, column, none_replacement='none'):
