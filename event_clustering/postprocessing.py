@@ -2,16 +2,6 @@ import pandas as pd
 from itertools import product
 from string import ascii_uppercase
 
-def add_cluster_label_km(df, df_vectorized, cluster_alg):
-    new_col = df_vectorized._get_numeric_data().dropna(axis=1)
-    df["cluster_label"] = pd.Series(cluster_alg.predict(new_col), index=df.index)
-    return df
-
-def add_cluster_label_hier(df, df_vectorized, cluster_alg):
-    new_col = df_vectorized._get_numeric_data().dropna(axis=1)
-    df["cluster_label"] = pd.Series(cluster_alg.labels_, index=df.index)
-    return df
-
 def replace_with_representative(df, col_name, col_label, original_df_columns):
     representative_dict = dict()
     cluster_nr = len(df[col_label].unique())
