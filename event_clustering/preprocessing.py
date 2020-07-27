@@ -61,6 +61,10 @@ def add_timestamp_features(df):
     df['feature_day_nr'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: (x - min_date).days)
     df['feature_weekday'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.weekday())
     df['feature_hour'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.hour)
+    df['feature_time_00-06'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if x.hour <= 6 else 0)
+    df['feature_time_07-12'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
+    df['feature_time_13-18'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
+    df['feature_time_19-24'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
 
 def add_event_type_representative(df, event_type_column=CONCEPT_NAME_COLUMN, representative_column=CONCEPT_NAME_COLUMN_REPRESENTATIVE):
     representative_dict = dict()
