@@ -29,7 +29,7 @@ def find_optimal_clusters(data, max_k):
     ax.set_ylabel('SSE')
     ax.set_title('SSE by Cluster Center Plot')
 
-def plot_pca(df, clusters, cluster_nr):
+def plot_pca(df, clusters):
     pca = PCA(n_components=2).fit(df)
     coords = pca.transform(df)
     plt.figure()
