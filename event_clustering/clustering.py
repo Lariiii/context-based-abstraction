@@ -8,11 +8,6 @@ from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import dendrogram, linkage
 
 # from https://www.kaggle.com/jbencina/clustering-documents-with-tfidf-and-kmeans
-
-##  interpret clusters
-# find_optimal_clusters(text, 20)
-# clusters = MiniBatchKMeans(n_clusters=6, init_size=1024, batch_size=2048, random_state=20).fit_predict(text)
-
 def find_optimal_clusters(data, max_k):
     iters = range(2, max_k+1, 2)
     
@@ -36,10 +31,9 @@ def plot_pca(df, clusters):
     plt.scatter(coords[:, 0], coords[:, 1], c=clusters, cmap='gnuplot')
     plt.show()
     
-# https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html#sphx-glr-auto-examples-cluster-plot-agglomerative-dendrogram-py
-
+# from https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html#sphx-glr-auto-examples-cluster-plot-agglomerative-dendrogram-py
 def plot_dendrogram(model, **kwargs):
-    # create the counts of samples under each node
+    # create the counts of samples under each node  
     counts = np.zeros(model.children_.shape[0])
     n_samples = len(model.labels_)
     for i, merge in enumerate(model.children_):

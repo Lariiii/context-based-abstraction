@@ -15,7 +15,3 @@ def replace_with_representative(df, col_name, col_label, original_df_columns):
     # just keep original columns
     df = df[original_df_columns]
     return df
-
-def write_to_csv(df, filename, index=False):
-    df.to_csv(filename, index=index)
-    print("Finished writing to CSV file.")
