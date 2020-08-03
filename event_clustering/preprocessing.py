@@ -15,12 +15,6 @@ from pm4py.objects.log.importer.csv import factory as csv_importer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
 
-TIMESTAMP_COLUMN_NAME = 'time:timestamp'
-CASE_ID_COLUMN_NAME = 'case:id'
-CONCEPT_NAME_COLUMN = 'concept:name'
-CONCEPT_NAME_COLUMN_REPRESENTATIVE = 'concept:name_representative'
-
-# transform log into pandas dataframe, by writing it out as csv and reading it with pandas
 def load(file_path):
     csv_path = file_path + ".csv"
     if not os.path.isfile(csv_path):
@@ -28,18 +22,11 @@ def load(file_path):
         csv_exporter.export(log, csv_path)
     return pd.read_csv(csv_path)
 
-def preprocess(df):
+def preprocess(df, column_name_map):
     #  transform the timestamp str to datetime object
-    df[TIMESTAMP_COLUMN_NAME] = pd.to_datetime(df[TIMESTAMP_COLUMN_NAME])
+    df[column_name_map['timestamp']] = pd.to_datetime(df[column_name_map['timestamp']])
     # sort events by timestamp and fix index after sorting
-    return df.sort_values(by=[TIMESTAMP_COLUMN_NAME]).reset_index(drop=True)
-
-def drop_columns(df):
-    keep = [CONCEPT_NAME_COLUMN]
-    column_names = df.columns.tolist()
-    for name in keep:
-        column_names.remove(name)
-    return df.drop(column_names, axis=1, inplace=False)
+    return df.sort_values(by=[column_name_map['timestamp']]).reset_index(drop=True)
 
 ### analyze df
 def analyze(df, show_examples=False):
@@ -57,57 +44,57 @@ def analyze(df, show_examples=False):
         print("mean case length: " + str(case_lengths.mean()[0]))
 
 ### feature generation
-def add_timestamp_features(df):
-    min_date =  df[TIMESTAMP_COLUMN_NAME].min()
-    df['feature_day_nr'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: (x - min_date).days)
-    df['feature_weekday'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.weekday())
-    df['feature_hour'] =  df[TIMESTAMP_COLUMN_NAME].apply(lambda x: x.hour)
-    df['feature_time_00-06'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if x.hour <= 6 else 0)
-    df['feature_time_07-12'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
-    df['feature_time_13-18'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
-    df['feature_time_19-24'] = df[TIMESTAMP_COLUMN_NAME].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
+def add_timestamp_features(df, column_name_map):
+    timestamp_column = column_name_map['timestamp']
+    min_date =  df[timestamp_column].min()
+    df['feature_day_nr'] =  df[timestamp_column].apply(lambda x: (x - min_date).days)
+    df['feature_weekday'] = df[timestamp_column].apply(lambda x: x.weekday())
+    df['feature_hour'] =  df[timestamp_column].apply(lambda x: x.hour)
+    df['feature_time_00-06'] = df[timestamp_column].apply(lambda x: 1 if x.hour <= 6 else 0)
+    df['feature_time_07-12'] = df[timestamp_column].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
+    df['feature_time_13-18'] = df[timestamp_column].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
+    df['feature_time_19-24'] = df[timestamp_column].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
 
-def add_event_type_representative(df, event_type_column=CONCEPT_NAME_COLUMN, representative_column=CONCEPT_NAME_COLUMN_REPRESENTATIVE):
+def add_event_type_representative(df, column_name_map):
     representative_dict = dict()
-    unique_event_types = df[event_type_column].unique()
+    unique_event_types = df[column_name_map['eventname']].unique()
     amount_of_event_types = len(unique_event_types)
     alphabet_len = len(ascii_uppercase)
     repetitions = (float(amount_of_event_types) / float(alphabet_len)) + 1
     representatives = [''.join(i) for i in product(ascii_uppercase, repeat = int(repetitions))]
     for idx, type in enumerate(unique_event_types):
         representative_dict[type] = representatives[idx]
-    df[representative_column] = df[event_type_column].map(representative_dict)
+    df[column_name_map['eventnamerepresentative']] = df[column_name_map['eventname']].map(representative_dict)
 
-def add_event_ref(df, 
-        distance, 
-        case_id_column=CASE_ID_COLUMN_NAME, 
-        event_name_column=CONCEPT_NAME_COLUMN_REPRESENTATIVE, 
-        timestamp_column=TIMESTAMP_COLUMN_NAME,
-    ):
+def add_event_ref(df, distance, column_name_map):
+    timestamp_column = column_name_map['timestamp']
+    caseid_column = column_name_map['caseid']
+    eventname_column = column_name_map['eventname']
+    
     ref_column = 'event_ref_' + str(distance)
     time_column = 'event_ref_time_' + str(distance)
 
     time_filler_max = df[timestamp_column].max() + timedelta(days=1)
     time_filler_min = df[timestamp_column].min() - timedelta(days=1)
 
-    print("Nr of cases " + str(len(df[case_id_column].unique())))
+    print("Nr of cases " + str(len(df[caseid_column].unique())))
     print(datetime.now())
     counter = 1
-    for case in df[case_id_column].unique():
+    for case in df[caseid_column].unique():
         sys.stdout.write("\r" + str(counter))
         sys.stdout.flush()
         counter += 1
-        case_rows = df.loc[df[case_id_column] == case]
+        case_rows = df.loc[df[caseid_column] == case]
         # add event reference
-        df.loc[df[case_id_column] == case, ref_column] = case_rows[event_name_column].shift(+(-distance))
+        df.loc[df[caseid_column] == case, ref_column] = case_rows[eventname_column].shift(+(-distance))
         time_replacement_df = pd.DataFrame(case_rows[timestamp_column].shift(+(-distance)))
         if distance > 0:
             time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler_min  
-            df.loc[df[case_id_column] == case, time_column] = (time_replacement_df[timestamp_column] - case_rows[timestamp_column]).map(lambda x: x.total_seconds())
+            df.loc[df[caseid_column] == case, time_column] = (time_replacement_df[timestamp_column] - case_rows[timestamp_column]).map(lambda x: x.total_seconds())
 
         if distance < 0:
             time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler_max
-            df.loc[df[case_id_column] == case, time_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
+            df.loc[df[caseid_column] == case, time_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
     df.loc[df[time_column] < 0, time_column] = -999999
 
 def determine_event_position(df):
