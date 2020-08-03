@@ -11,6 +11,7 @@ approach_preprocessing.ipynb
 - transforms the dataset from XES to dataframes
 - applys the feature generation to the dataset and stores it as separate intermediate csv for the next step
 - applys encoding to the features and stores the result as separate intermediate csv for the next step
+
 approach_evaluation.ipynb
 - loads the encoded csv
 - applys clustering (kmeans or hierarchical)
@@ -18,6 +19,7 @@ approach_evaluation.ipynb
 - generates an abstracted event log based on the 
 - generates process models for the original and abstracted event log
 - calculated metrics on the process models
+
 plot_results.ipynb
 - notebook used to generate plots for our paper
 
@@ -27,10 +29,13 @@ preprocessing.py,
     - transforming datasets from XES to csvs
     - feature generation
     - feature encoding
+
 clustering.py
 - code snippets used for the actual clustering and evaluation
+
 postprocessing.py
 - code to replace events with their presentative
+
 process_mining.py
 - code for 
     - process mining 
