@@ -29,7 +29,10 @@ def preprocess(df, column_name_map):
     return df.sort_values(by=[column_name_map['timestamp']]).reset_index(drop=True)
 
 ### analyze df
-def analyze(df, show_examples=False):
+def analyze(df, column_name_map, show_examples=False, include_casetime=False):
+    timestamp_column = column_name_map['timestamp']
+    caseid_column = column_name_map['caseid']
+
     for name in df.columns:
         print("column name: " + name)
         print("data type: " + str(type(df[name][0])))
@@ -37,15 +40,39 @@ def analyze(df, show_examples=False):
         if show_examples:
             print(df[name][:10].values)
         print('\n')
-    if 'case:id' in df.columns:
-        case_lengths = df.groupby(['case:id'])['case:id'].agg(['size'])
+    if caseid_column in df.columns:
+        case_groups = df.groupby(['case:id'])
+        case_lengths = case_groups['case:id'].agg(['size'])
         print("min case length: " + str(case_lengths.min()[0]))
         print("max case length: " + str(case_lengths.max()[0]))
         print("mean case length: " + str(case_lengths.mean()[0]))
 
+        if include_casetime:
+            min_case_time = sys.maxsize
+            max_case_time = 0
+            case_time_total = 0
+            case_names = df[caseid_column].unique()
+
+            for case in case_names:
+                case_event_times = df.loc[df[caseid_column] == case, timestamp_column]
+                case_duration = (case_event_times.max() - case_event_times.min()).total_seconds()
+                if case_duration > max_case_time:
+                    max_case_time = case_duration
+                elif case_duration < min_case_time:
+                    min_case_time = case_duration
+                case_time_total += case_duration
+            print('\n')
+            print("min case duration seconds: " + str(min_case_time))
+            print("min case duration hours: " + str(min_case_time / 3600))
+            print("max case duration seconds: " + str(max_case_time))
+            print("max case duration hours: " + str(max_case_time / 3600))
+            print("mean case duration seconds: " + str(case_time_total / len(case_names)))
+            print("mean case duration: hours " + str((case_time_total / len(case_names) / 3600)))
+
 ### feature generation
 def add_timestamp_features(df, column_name_map):
     timestamp_column = column_name_map['timestamp']
+
     min_date =  df[timestamp_column].min()
     df['feature_day_nr'] =  df[timestamp_column].apply(lambda x: (x - min_date).days)
     df['feature_weekday'] = df[timestamp_column].apply(lambda x: x.weekday())
@@ -66,13 +93,13 @@ def add_event_type_representative(df, column_name_map):
         representative_dict[type] = representatives[idx]
     df[column_name_map['eventnamerepresentative']] = df[column_name_map['eventname']].map(representative_dict)
 
-def add_event_ref(df, distance, column_name_map):
+def add_neighbor_event(df, distance, column_name_map):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
     eventname_column = column_name_map['eventname']
     
-    ref_column = 'event_ref_' + str(distance)
-    time_column = 'event_ref_time_' + str(distance)
+    neighbor_event_column = 'feature_neighbor_event_' + str(distance)
+    timedif_neighbor_event_column = 'feature_timedif_neighbor_event_' + str(distance)
 
     time_filler_max = df[timestamp_column].max() + timedelta(days=1)
     time_filler_min = df[timestamp_column].min() - timedelta(days=1)
@@ -84,29 +111,54 @@ def add_event_ref(df, distance, column_name_map):
         sys.stdout.write("\r" + str(counter))
         sys.stdout.flush()
         counter += 1
+
         case_rows = df.loc[df[caseid_column] == case]
-        # add event reference
-        df.loc[df[caseid_column] == case, ref_column] = case_rows[eventname_column].shift(+(-distance))
+        # add event neighbor
+        df.loc[df[caseid_column] == case, neighbor_event_column] = case_rows[eventname_column].shift(+(-distance))
         time_replacement_df = pd.DataFrame(case_rows[timestamp_column].shift(+(-distance)))
         if distance > 0:
             time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler_min  
-            df.loc[df[caseid_column] == case, time_column] = (time_replacement_df[timestamp_column] - case_rows[timestamp_column]).map(lambda x: x.total_seconds())
+            df.loc[df[caseid_column] == case, timedif_neighbor_event_column] = (time_replacement_df[timestamp_column] - case_rows[timestamp_column]).map(lambda x: x.total_seconds())
 
         if distance < 0:
             time_replacement_df.loc[time_replacement_df[timestamp_column].isnull()] = time_filler_max
-            df.loc[df[caseid_column] == case, time_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
-    df.loc[df[time_column] < 0, time_column] = -999999
+            df.loc[df[caseid_column] == case, timedif_neighbor_event_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
+    df.loc[df[timedif_neighbor_event_column] < 0, timedif_neighbor_event_column] = -999999
 
-def determine_event_position(df):
-    df['feature_pos_beginning'] = 0
-    df['feature_pos_middle'] = 0
-    df['feature_pos_end'] = 0
-    df.loc[pd.isnull(df['event_ref_-1']), 'feature_pos_beginning'] = 1
-    df.loc[pd.isnull(df['event_ref_1']), 'feature_pos_end'] = 1
-    df.loc[(df['feature_pos_beginning'] == 0) & (df['feature_pos_end'] == 0), 'feature_pos_middle'] = 1
+def determine_start_end_event_feature(df, column_name_map):
+    df['feature_position_beginning'] = 0
+    df['feature_position_middle'] = 0
+    df['feature_position_end'] = 0
+    df.loc[pd.isnull(df['feature_neighbor_event_-1']), 'feature_position_beginning'] = 1
+    df.loc[pd.isnull(df['feature_neighbor_event_1']), 'feature_pos_feature_position_endend'] = 1
+    df.loc[(df['feature_position_beginning'] == 0) & (df['feature_position_end'] == 0), 'feature_position_middle'] = 1
 
+def determine_time_frame_feature(df, column_name_map, start_window_length, end_window_length):
+    timestamp_column = column_name_map['timestamp']
+    caseid_column = column_name_map['caseid']
 
+    print("Nr of cases " + str(len(df[caseid_column].unique())))
+    print(datetime.now())
+    counter = 1
+    for case in df[caseid_column].unique():
+        sys.stdout.write("\r" + str(counter))
+        sys.stdout.flush()
+        counter += 1
+
+        case_times = df.loc[df[caseid_column] == case, timestamp_column]
+        case_start = case_times.min()
+        case_end = case_times.max()
+        case_rows = df.loc[df[caseid_column] == case]
+
+        df.loc[df[caseid_column] == case, 'feature_in_start_window'] = case_rows[timestamp_column].map(lambda x: 1 if (x - case_start).total_seconds() < start_window_length else 0)
+        df.loc[df[caseid_column] == case, 'feature_in_end_window'] = case_rows[timestamp_column].map(lambda x: 1 if (case_end - x).total_seconds() < end_window_length else 0)
+        
+        case_rows = df.loc[df[caseid_column] == case]
+        
 ### feature encoding
+def filter_column_names(df, prefix):
+    return [column for column in df.columns if prefix in column]
+
 def one_hot_encode(df, column, none_replacement='none'):
     enc = OneHotEncoder(handle_unknown='ignore')
     df[column].fillna(none_replacement, inplace=True)
