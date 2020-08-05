@@ -1,42 +1,42 @@
 # context-based-abstraction
 Event Clustering for Context-based Data Abstraction
 
-This repository contains and documents our work in the master's seminar "Data Exctraction for Process Mining" at Hasso Plattner Institute in the summer term 2020.
+This repository contains and documents our work in the master's seminar "Data Extraction for Process Mining" at Hasso Plattner Institute in the summer term 2020.
 
 ## Project structure
 The project is structured into pipelines implemented as jupyter notebooks that process datasets using several modules including function for preprocessing, clustering, postprocessing and evaluation.
 
 ### Pipeline notebooks 
-approach_preprocessing.ipynb
+**approach_preprocessing.ipynb**
 - transforms the dataset from XES to dataframes
-- applys the feature generation to the dataset and stores it as separate intermediate csv for the next step
-- applys encoding to the features and stores the result as separate intermediate csv for the next step
+- applies the feature generation to the dataset and stores it as separate intermediate csv for the next step
+- applies encoding to the features and stores the result as separate intermediate csv for the next step
 
-approach_evaluation.ipynb
+**approach_evaluation.ipynb**
 - loads the encoded csv
-- applys clustering (kmeans or hierarchical)
+- applies clustering (kmeans or hierarchical)
 - helps evaluate the result by generating PCA plots, calculating metrics
-- generates an abstracted event log based on the 
+- generates an abstracted event log based on the clustering results
 - generates process models for the original and abstracted event log
-- calculated metrics on the process models
+- calculates metrics on the process models
 
-plot_results.ipynb
-- notebook used to generate plots for our paper
+**plot_results.ipynb**
+- notebook used to generate plots for the final report
 
 ### Code modules (stored in /event_clustering)
-preprocessing.py, 
+**preprocessing.py** 
 - code for
-    - transforming datasets from XES to csvs
+    - transforming datasets from XES to csv
     - feature generation
     - feature encoding
 
-clustering.py
+**clustering.py**
 - code snippets used for the actual clustering and evaluation
 
-postprocessing.py
+**postprocessing.py**
 - code to replace events with their presentative
 
-process_mining.py
+**process_mining.py**
 - code for 
     - process mining 
     - calculating metrics on the process models
