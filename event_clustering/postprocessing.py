@@ -2,19 +2,11 @@ import pandas as pd
 from itertools import product
 from string import ascii_uppercase
 
-def replace_with_representative(df, col_name, col_label, original_df_columns):
-    representative_dict = dict()
-    cluster_nr = len(df[col_label].unique())
-    alphabet_len = len(ascii_uppercase)
-    repetitions = (float(cluster_nr) / float(alphabet_len)) + 1
-    representatives = [''.join(i) for i in product(ascii_uppercase, repeat = int(repetitions))]
-    for label in range(cluster_nr):
-        representative_dict[label] = representatives[label]
-        
-    df[col_name] = df[col_label].map(representative_dict)
-    # just keep original columns
-    df = df[original_df_columns]
-    return df
+def merge_subsequent_same_events(abstracted_df, caseid_column, cluster_col):
+    for case in abstracted_df[caseid_column].unique():
+        case_rows = abstracted_df.loc[abstracted_df[caseid_column] == case]
+        abstracted_df.drop(case_rows[case_rows[cluster_col] == case_rows[cluster_col].shift(+1)].index, inplace=True)
+    return abstracted_df
 
 def write_to_csv(df, filename, index=False):
     df.to_csv(filename, index=index)

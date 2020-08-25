@@ -24,12 +24,15 @@ def find_optimal_clusters(data, max_k):
     ax.set_ylabel('SSE')
     ax.set_title('SSE by Cluster Center Plot')
 
-def plot_pca(df, clusters):
+def plot_pca(df, clusters, path=''):
     pca = PCA(n_components=2).fit(df)
     coords = pca.transform(df)
     plt.figure()
     plt.scatter(coords[:, 0], coords[:, 1], c=clusters, cmap='gnuplot')
-    plt.show()
+    if len(path) > 0:
+        plt.savefig(path)
+    else:
+        plt.show()
     
 # from https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_dendrogram.html#sphx-glr-auto-examples-cluster-plot-agglomerative-dendrogram-py
 def plot_dendrogram(model, **kwargs):
