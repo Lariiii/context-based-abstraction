@@ -130,7 +130,7 @@ def determine_start_end_event_feature(df, column_name_map):
     df['feature_position_middle'] = 0
     df['feature_position_end'] = 0
     df.loc[pd.isnull(df['feature_neighbor_event_-1']), 'feature_position_beginning'] = 1
-    df.loc[pd.isnull(df['feature_neighbor_event_1']), 'feature_pos_feature_position_endend'] = 1
+    df.loc[pd.isnull(df['feature_neighbor_event_1']), 'feature_position_end'] = 1
     df.loc[(df['feature_position_beginning'] == 0) & (df['feature_position_end'] == 0), 'feature_position_middle'] = 1
 
 def determine_time_frame_feature(df, column_name_map, start_window_length, end_window_length):
@@ -150,8 +150,8 @@ def determine_time_frame_feature(df, column_name_map, start_window_length, end_w
         case_end = case_times.max()
         case_rows = df.loc[df[caseid_column] == case]
 
-        df.loc[df[caseid_column] == case, 'feature_in_start_window'] = case_rows[timestamp_column].map(lambda x: 1 if (x - case_start).total_seconds() < start_window_length else 0)
-        df.loc[df[caseid_column] == case, 'feature_in_end_window'] = case_rows[timestamp_column].map(lambda x: 1 if (case_end - x).total_seconds() < end_window_length else 0)
+        df.loc[df[caseid_column] == case, 'feature_window_start'] = case_rows[timestamp_column].map(lambda x: 1 if (x - case_start).total_seconds() < start_window_length else 0)
+        df.loc[df[caseid_column] == case, 'feature_window_end'] = case_rows[timestamp_column].map(lambda x: 1 if (case_end - x).total_seconds() < end_window_length else 0)
         
         case_rows = df.loc[df[caseid_column] == case]
         
