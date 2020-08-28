@@ -70,13 +70,8 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
             print("mean case duration: hours " + str((case_time_total / len(case_names) / 3600)))
 
 ### feature generation
-def add_timestamp_features(df, column_name_map):
+def add_time_of_day_feature(df, column_name_map):
     timestamp_column = column_name_map['timestamp']
-
-    min_date =  df[timestamp_column].min()
-    df['feature_day_nr'] =  df[timestamp_column].apply(lambda x: (x - min_date).days)
-    df['feature_weekday'] = df[timestamp_column].apply(lambda x: x.weekday())
-    df['feature_hour'] =  df[timestamp_column].apply(lambda x: x.hour)
     df['feature_time_00-06'] = df[timestamp_column].apply(lambda x: 1 if x.hour <= 6 else 0)
     df['feature_time_07-12'] = df[timestamp_column].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
     df['feature_time_13-18'] = df[timestamp_column].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
@@ -125,15 +120,16 @@ def add_neighbor_event(df, distance, column_name_map):
             df.loc[df[caseid_column] == case, timedif_neighbor_event_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
     df.loc[df[timedif_neighbor_event_column] < 0, timedif_neighbor_event_column] = -999999
 
-def determine_start_end_event_feature(df, column_name_map):
+def determine_position_feature(df, column_name_map, distance=1):
     df['feature_position_beginning'] = 0
     df['feature_position_middle'] = 0
     df['feature_position_end'] = 0
-    df.loc[pd.isnull(df['feature_neighbor_event_-1']), 'feature_position_beginning'] = 1
-    df.loc[pd.isnull(df['feature_neighbor_event_1']), 'feature_position_end'] = 1
+    for x in range(1,distance+1):
+        df.loc[pd.isnull(df['feature_neighbor_event_-' + str(x)]), 'feature_position_beginning'] = 1
+        df.loc[pd.isnull(df['feature_neighbor_event_' + str(x)]), 'feature_position_end'] = 1
     df.loc[(df['feature_position_beginning'] == 0) & (df['feature_position_end'] == 0), 'feature_position_middle'] = 1
 
-def determine_time_frame_feature(df, column_name_map, start_window_length, end_window_length):
+def deterimine_time_window_feature(df, column_name_map, start_window_length, end_window_length):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
 
