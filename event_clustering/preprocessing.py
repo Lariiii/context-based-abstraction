@@ -28,7 +28,7 @@ def preprocess(df, column_name_map):
     # sort events by timestamp and fix index after sorting
     return df.sort_values(by=[column_name_map['timestamp']]).reset_index(drop=True)
 
-### analyze df
+# offers insight into the dataset
 def analyze(df, column_name_map, show_examples=False, include_casetime=False):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
@@ -70,31 +70,13 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
             print("mean case duration: hours " + str((case_time_total / len(case_names) / 3600)))
 
 ### feature generation
-def add_time_of_day_feature(df, column_name_map):
-    timestamp_column = column_name_map['timestamp']
-    df['feature_time_00-06'] = df[timestamp_column].apply(lambda x: 1 if x.hour <= 6 else 0)
-    df['feature_time_07-12'] = df[timestamp_column].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
-    df['feature_time_13-18'] = df[timestamp_column].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
-    df['feature_time_19-24'] = df[timestamp_column].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
-
-def add_event_type_representative(df, column_name_map):
-    representative_dict = dict()
-    unique_event_types = df[column_name_map['eventname']].unique()
-    amount_of_event_types = len(unique_event_types)
-    alphabet_len = len(ascii_uppercase)
-    repetitions = (float(amount_of_event_types) / float(alphabet_len)) + 1
-    representatives = [''.join(i) for i in product(ascii_uppercase, repeat = int(repetitions))]
-    for idx, type in enumerate(unique_event_types):
-        representative_dict[type] = representatives[idx]
-    df[column_name_map['eventnamerepresentative']] = df[column_name_map['eventname']].map(representative_dict)
-
 def add_neighbor_event(df, distance, column_name_map):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
     eventname_column = column_name_map['eventname']
     
-    neighbor_event_column = 'feature_neighbor_event_' + str(distance)
-    timedif_neighbor_event_column = 'feature_timedif_neighbor_event_' + str(distance)
+    neighbor_event_column = 'neighbor_event_' + str(distance)
+    timedif_neighbor_event_column = 'neighbor_event_timedif_' + str(distance)
 
     time_filler_max = df[timestamp_column].max() + timedelta(days=1)
     time_filler_min = df[timestamp_column].min() - timedelta(days=1)
@@ -120,16 +102,16 @@ def add_neighbor_event(df, distance, column_name_map):
             df.loc[df[caseid_column] == case, timedif_neighbor_event_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
     df.loc[df[timedif_neighbor_event_column] < 0, timedif_neighbor_event_column] = -999999
 
-def determine_position_feature(df, column_name_map, distance=1):
-    df['feature_position_beginning'] = 0
-    df['feature_position_middle'] = 0
-    df['feature_position_end'] = 0
+def add_event_position_relative_feature(df, column_name_map, distance=1):
+    df['feature_position_relative_beginning'] = 0
+    df['feature_position_relative_middle'] = 0
+    df['feature_position_relative_end'] = 0
     for x in range(1,distance+1):
-        df.loc[pd.isnull(df['feature_neighbor_event_-' + str(x)]), 'feature_position_beginning'] = 1
-        df.loc[pd.isnull(df['feature_neighbor_event_' + str(x)]), 'feature_position_end'] = 1
-    df.loc[(df['feature_position_beginning'] == 0) & (df['feature_position_end'] == 0), 'feature_position_middle'] = 1
+        df.loc[pd.isnull(df['neighbor_event_-' + str(x)]), 'feature_position_relative_beginning'] = 1
+        df.loc[pd.isnull(df['neighbor_event_' + str(x)]), 'feature_position_relative_end'] = 1
+    df.loc[(df['feature_position_relative_beginning'] == 0) & (df['feature_position_relative_end'] == 0), 'feature_position_relative_middle'] = 1
 
-def deterimine_time_window_feature(df, column_name_map, start_window_length, end_window_length):
+def add_event_position_window_feature(df, column_name_map, start_window_length, end_window_length):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
 
@@ -146,10 +128,17 @@ def deterimine_time_window_feature(df, column_name_map, start_window_length, end
         case_end = case_times.max()
         case_rows = df.loc[df[caseid_column] == case]
 
-        df.loc[df[caseid_column] == case, 'feature_window_start'] = case_rows[timestamp_column].map(lambda x: 1 if (x - case_start).total_seconds() < start_window_length else 0)
-        df.loc[df[caseid_column] == case, 'feature_window_end'] = case_rows[timestamp_column].map(lambda x: 1 if (case_end - x).total_seconds() < end_window_length else 0)
+        df.loc[df[caseid_column] == case, 'feature_position_window_start'] = case_rows[timestamp_column].map(lambda x: 1 if (x - case_start).total_seconds() < start_window_length else 0)
+        df.loc[df[caseid_column] == case, 'feature_position_window_end'] = case_rows[timestamp_column].map(lambda x: 1 if (case_end - x).total_seconds() < end_window_length else 0)
         
         case_rows = df.loc[df[caseid_column] == case]
+
+def add_time_of_day_feature(df, column_name_map):
+    timestamp_column = column_name_map['timestamp']
+    df['feature_time_of_day_00-06'] = df[timestamp_column].apply(lambda x: 1 if x.hour <= 6 else 0)
+    df['feature_time_of_day_07-12'] = df[timestamp_column].apply(lambda x: 1 if 7 <= x.hour <= 12 else 0)
+    df['feature_time_of_day_13-18'] = df[timestamp_column].apply(lambda x: 1 if 13 <= x.hour <= 18 else 0)
+    df['feature_time_of_day_19-24'] = df[timestamp_column].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
         
 ### feature encoding
 def filter_column_names(df, prefix):
