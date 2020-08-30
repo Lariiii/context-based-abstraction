@@ -44,8 +44,8 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
         print('\n')
     # print insights about case length
     if caseid_column in df.columns:
-        case_groups = df.groupby(['case:id'])
-        case_lengths = case_groups['case:id'].agg(['size'])
+        case_groups = df.groupby([caseid_column])
+        case_lengths = case_groups[caseid_column].agg(['size'])
         print("min case length: " + str(case_lengths.min()[0]))
         print("max case length: " + str(case_lengths.max()[0]))
         print("mean case length: " + str(case_lengths.mean()[0]))
