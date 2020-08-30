@@ -15,6 +15,7 @@ from pm4py.objects.log.importer.csv import factory as csv_importer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
 
+# load the eventlog, store it as csv and return a dataframe by reading the csv. If the csv already exists return it immediately
 def load(file_path):
     csv_path = file_path + ".csv"
     if not os.path.isfile(csv_path):
@@ -33,13 +34,15 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
 
+    # print insights about each attribute
     for name in df.columns:
-        print("column name: " + name)
+        print("attribute name: " + name)
         print("data type: " + str(type(df[name][0])))
         print("unique values: " + str(len(df[name].unique())))
         if show_examples:
             print(df[name][:10].values)
         print('\n')
+    # print insights about case length
     if caseid_column in df.columns:
         case_groups = df.groupby(['case:id'])
         case_lengths = case_groups['case:id'].agg(['size'])
@@ -61,6 +64,7 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
                 elif case_duration < min_case_time:
                     min_case_time = case_duration
                 case_time_total += case_duration
+            # print insights about case duration
             print('\n')
             print("min case duration seconds: " + str(min_case_time))
             print("min case duration hours: " + str(min_case_time / 3600))
@@ -70,6 +74,11 @@ def analyze(df, column_name_map, show_examples=False, include_casetime=False):
             print("mean case duration: hours " + str((case_time_total / len(case_names) / 3600)))
 
 ### feature generation
+
+
+# for each event determine the neighbor event and the time difference to it,  that is distance steps away from the event
+# distance=1 means, determine the first succeeding event
+# distance=-1 means, determine the first preceeding event, etc.
 def add_neighbor_event(df, distance, column_name_map):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
@@ -102,6 +111,8 @@ def add_neighbor_event(df, distance, column_name_map):
             df.loc[df[caseid_column] == case, timedif_neighbor_event_column] = (case_rows[timestamp_column] -  time_replacement_df[timestamp_column]).map(lambda x: x.total_seconds())
     df.loc[df[timedif_neighbor_event_column] < 0, timedif_neighbor_event_column] = -999999
 
+# determine the event position for each event relative to other events in the case, by checking if one of the neighbor events within distance is the start or end event
+# if distance=2, check if one of the two preeceeding events is a start event and if one of the two succeeding events is the end event
 def add_event_position_relative_feature(df, column_name_map, distance=1):
     df['feature_position_relative_beginning'] = 0
     df['feature_position_relative_middle'] = 0
@@ -111,6 +122,9 @@ def add_event_position_relative_feature(df, column_name_map, distance=1):
         df.loc[pd.isnull(df['neighbor_event_' + str(x)]), 'feature_position_relative_end'] = 1
     df.loc[(df['feature_position_relative_beginning'] == 0) & (df['feature_position_relative_end'] == 0), 'feature_position_relative_middle'] = 1
 
+# determine the event position for each event based on a timewindow.
+# If start_window_length=60, check if the event occured within the first 60min of the case
+# If end_window_length=60, check if the event occured within the last 60min of the case
 def add_event_position_window_feature(df, column_name_map, start_window_length, end_window_length):
     timestamp_column = column_name_map['timestamp']
     caseid_column = column_name_map['caseid']
@@ -133,6 +147,7 @@ def add_event_position_window_feature(df, column_name_map, start_window_length, 
         
         case_rows = df.loc[df[caseid_column] == case]
 
+# encode the time of day for each event by binning into 4 bins representing morning (7-12), afternoon (13-18), evening (19-24) and night (1-6)
 def add_time_of_day_feature(df, column_name_map):
     timestamp_column = column_name_map['timestamp']
     df['feature_time_of_day_00-06'] = df[timestamp_column].apply(lambda x: 1 if x.hour <= 6 else 0)
@@ -141,20 +156,25 @@ def add_time_of_day_feature(df, column_name_map):
     df['feature_time_of_day_19-24'] = df[timestamp_column].apply(lambda x: 1 if 19 <= x.hour <= 24 else 0)
         
 ### feature encoding
+
+# helper function to filter the columns that have the given prefix
 def filter_column_names(df, prefix):
     return [column for column in df.columns if prefix in column]
 
+# helper function to perform one-hot-encoding on the given column
 def one_hot_encode(df, column, none_replacement='none'):
     enc = OneHotEncoder(handle_unknown='ignore')
     df[column].fillna(none_replacement, inplace=True)
     return pd.DataFrame(enc.fit_transform(df[[column]]).toarray(), columns = enc.get_feature_names([column]))
 
+# helper function to perform binning on the given column
 def binning(df, column, n_bins, column_prefix=''):
     enc = KBinsDiscretizer(n_bins=n_bins)
     df_encoded = pd.DataFrame(enc.fit_transform(df[[column]]).toarray())
     df_encoded.columns = [column_prefix + str(col) for col in df_encoded.columns]
     return df_encoded
 
+# helper function to perform tf-idf weighted bag-of-word encoding on the given column
 def tfidf_encode(df, column, vectorizer):
     vectorizer.fit_transform(df[column])
     df_encoded = pd.DataFrame(vectorizer.transform(df[column]).todense())
